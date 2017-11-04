@@ -1,0 +1,134 @@
+---
+title: "Practical ML Final"
+author: "Joshua Hauman"
+date: "November 1, 2017"
+output: html_document
+---
+# Project Write Up
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+
+## Data Description
+
+**Note**
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment
+
+
+Training data:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+Test data:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+# Let Us Begin
+
+## Load the required packages 
+
+```{r}
+library(evaluate)
+library(formatR)
+library(highr)
+library(markdown)
+library(knitr)
+library(rmarkdown)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(rattle)
+library(randomForest)
+set.seed(12345)
+```
+
+## Load the data
+
+```{r}
+trainingUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+trainingData <- read.csv(url(trainingUrl), na.strings=c("NA","#DIV/0!",""))
+testData <- read.csv(url(testUrl), na.strings=c("NA","#DIV/0!",""))
+```
+We must split the training data in to two sets
+
+## Split the Traning data 
+```{r}
+inTraining <- createDataPartition(trainingData$classe, p = 0.7, list = FALSE)
+training <- trainingData[inTraining, ]
+testing <- trainingData[-inTraining, ]
+dim(training); dim(testing)
+
+```
+
+# Clean the data 
+
+## Remove variables with NearZero Variance  
+```{r}
+NZV <- nearZeroVar(training)
+training <-training[, -NZV]
+testing  <- testing[, -NZV]
+dim(training); dim(testing)
+```
+
+## Remove variables that are mostly NA 
+```{r}
+NAs    <- sapply(training, function(x) mean(is.na(x))) > 0.95
+training <- training[, NAs==FALSE]
+testing  <- testing[, NAs==FALSE]
+dim(training); dim(testing)
+```
+# Decision tree Predicion 
+```{r}
+CT <- rpart(classe ~ ., data=training, method="class")
+fancyRpartPlot(CT)
+```
+
+## Create confusion matrix 
+```{r}
+CTpredict <- predict(CT, testing, type = "class")
+cmtree <- confusionMatrix(CTpredict, testing$classe)
+cmtree
+```
+## Plot Confusion matrix 
+```{r}
+plot(cmtree$table, col = cmtree$byClass, main = paste("Decision Tree Confusion Matrix: Accuracy =", round(cmtree$overall['Accuracy'], 4)))
+```
+##Random Forest prediction
+```{r}
+set.seed(12345)
+RF <- randomForest(classe ~ ., data=training)
+RFpredict <- predict(RF, testing, type = "class")
+cmRF <- confusionMatrix(RFpredict, testing$classe)
+cmRF
+```
+# Plot Random Forest 
+```{r}
+plot(RF)
+```
+
+
+# Plot confusion matrix
+```{r}
+plot(cmRF$table, col = cmtree$byClass, main = paste("Random Forest Confusion Matrix: Accuracy =", round(cmRF$overall['Accuracy'], 4)))
+```
+
+## Predict results on testing data
+
+```{r eval=FALSE}
+predictTEST <- predict(RF, data=testing, type = "class")
+predictTEST
+```
+
+
+# Final Prediction Results
+
+B A B A A E D B A A B C B A E E A B B B
+
+
+
+
